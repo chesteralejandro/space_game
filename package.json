@@ -1,0 +1,17 @@
+{
+  "name": "06_multiplayer_game_1942",
+  "version": "1.0.0",
+  "description": "Multiplayer 1942 game using socket.io",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "Chester Alejandro",
+  "license": "ISC",
+  "dependencies": {
+    "ejs": "^3.1.6",
+    "express": "^4.17.3",
+    "socket.io": "^4.4.1"
+  }
+}
