@@ -3,6 +3,12 @@ const express = require("express");
 const app = express();
 const port = 8000;
 
+const Boss = require("./classes/boss");
+const Bullet = require("./classes/bullet");
+const Enemy = require("./classes/enemy");
+const Explosion = require("./classes/explosion");
+const Player = require("./classes/player");
+
 app.use(express.static(path.join(__dirname, "static")));
 
 app.set("view engine", "ejs");
@@ -13,214 +19,202 @@ app.get("/", (req, res) => res.render("index"));
 const server = app.listen(port, () =>
 	console.log(`Listening on port ${port}...`)
 );
+
 const io = require("socket.io")(server);
 
-class Player {
-	constructor(name) {
-		this.name = name;
-		this.x = 490;
-		this.y = 400;
-		this.z = 0;
-		this.damage = 5;
-		this.speed = 30;
-		this.score = 0;
-		this.bullets = [[], []];
-	}
-}
-
-class Bullet {
-	constructor(x, y) {
-		this.x = x;
-		this.y = y;
-	}
-}
-
-const boss = {
-	x: 470,
-	y: -100,
-	life: 3000,
-	speed: 4,
-	isGoingRight: true,
-};
-
-//== Change enemy's life here ==//
-const droneLife = 10;
-const lightLife = 50;
-const heavyLife = 150;
+const boss = new Boss();
+const bossExplosions = [];
 
 const enemies = [
-	{ x: 550, y: -1000, type: "drone", life: droneLife },
-	{ x: 66, y: -1000, type: "drone", life: droneLife },
-	{ x: 20, y: 10, type: "drone", life: droneLife },
-	{ x: 656, y: -1000, type: "drone", life: droneLife },
-	{ x: 450, y: -1000, type: "light", life: lightLife },
-	{ x: 790, y: -1000, type: "light", life: lightLife },
-	{ x: 656, y: -1000, type: "light", life: lightLife },
-	{ x: 50, y: 100, type: "light", life: lightLife },
-	{ x: 100, y: 10, type: "light", life: lightLife },
-	{ x: 914, y: -1000, type: "heavy", life: heavyLife },
-	{ x: 850, y: -1000, type: "heavy", life: heavyLife },
-	{ x: 50, y: -1000, type: "heavy", life: heavyLife },
+	new Enemy(550, -1000, "drone"),
+	new Enemy(66, -1000, "drone"),
+	new Enemy(20, 10, "drone"),
+	new Enemy(656, -1000, "drone"),
+	new Enemy(450, -1000, "light"),
+	new Enemy(790, -1000, "light"),
+	new Enemy(656, -1000, "light"),
+	new Enemy(50, 100, "light"),
+	new Enemy(100, 10, "light"),
+	new Enemy(914, -1000, "heavy"),
+	new Enemy(850, -1000, "heavy"),
+	new Enemy(50, -1000, "heavy"),
 ];
 
-const bossExplosions = [];
 const explosions = [];
-setInterval(() => explosions.shift(), 800);
 const players = {};
 let gameloop;
 
+const screenTopBorderline = 20;
+const screenBottomBorderline = 500;
+const screenLeftBorderline = 20;
+const screenRightBorderline = 970;
+
 io.on("connection", function (socket) {
-	socket.on("newPlayer", function ({ name }) {
+	socket.on("disconnect", () => {
+		delete players[socket.id];
+		io.emit("createPlayers", players);
+	});
+
+	socket.on("joinGame", function ({ name }) {
 		socket.id = name;
 		players[socket.id] = new Player(name);
 
-		io.emit("activePlayers", { players });
-		socket.emit("createEnemies", { enemies }); // Responds only to the user that triggered the listener
+		io.emit("createPlayers", players);
+		// socket.emit responds only to the user that triggered the listener
+		socket.emit("createEnemies", enemies);
+
 		setInterval(() => {
 			moveBullets();
 			detectCollision();
 		}, 5);
+
 		gameloop = setInterval(() => {
-			explosionActivity();
 			moveEnemies();
-		}, 50);
+			explosionsMovement();
+		}, 40);
 	});
 
-	socket.on("controls", ({ move }) => {
-		if (move == "ArrowUp") {
-			players[socket.id]["y"] =
-				players[socket.id]["y"] > 20
-					? players[socket.id]["y"] - players[socket.id]["speed"]
-					: players[socket.id]["y"];
-		} else if (move == "ArrowDown") {
-			players[socket.id]["y"] =
-				players[socket.id]["y"] < 500
-					? players[socket.id]["y"] + players[socket.id]["speed"]
-					: players[socket.id]["y"];
-		} else if (move == "ArrowLeft") {
-			players[socket.id]["x"] =
-				players[socket.id]["x"] > 20
-					? players[socket.id]["x"] - players[socket.id]["speed"]
-					: players[socket.id]["x"];
-			players[socket.id]["z"] = -8;
-		} else if (move == "ArrowRight") {
-			players[socket.id]["x"] =
-				players[socket.id]["x"] < 970
-					? players[socket.id]["x"] + players[socket.id]["speed"]
-					: players[socket.id]["x"];
-			players[socket.id]["z"] = 8;
-		} else if (move == " ") {
-			players[socket.id]["bullets"][0].push(
-				new Bullet(
-					players[socket.id]["x"] - 2,
-					players[socket.id]["y"] - 20
-				)
-			);
-			players[socket.id]["bullets"][1].push(
-				new Bullet(
-					players[socket.id]["x"] + 18,
-					players[socket.id]["y"] - 20
-				)
-			);
+	socket.on("controlPlayer", ({ move }) => {
+		const player = players[socket.id];
+
+		const playerIsMovingUp = move == "ArrowUp";
+		const playerIsMovingDown = move == "ArrowDown";
+		const playerIsMovingLeft = move == "ArrowLeft";
+		const playerIsMovingRight = move == "ArrowRight";
+		const playerIsFiring = move == " " || move == "click";
+
+		const playerCanMoveUp = player.y > screenTopBorderline;
+		const playerCanMoveDown = player.y < screenBottomBorderline;
+		const playerCanMoveLeft = player.x > screenLeftBorderline;
+		const playerCanMoveRight = player.x < screenRightBorderline;
+
+		const tiltLeftAngle = -8;
+		const tiltRightAngle = 8;
+
+		if (playerIsMovingUp && playerCanMoveUp) {
+			player.y -= player.speed;
+		} else if (playerIsMovingDown && playerCanMoveDown) {
+			player.y += player.speed;
+		} else if (playerIsMovingLeft && playerCanMoveLeft) {
+			player.x -= player.speed;
+			player.z = tiltLeftAngle;
+		} else if (playerIsMovingRight && playerCanMoveRight) {
+			player.x += player.speed;
+			player.z = tiltRightAngle;
+		} else if (playerIsFiring) {
+			player.leftBullets.push(new Bullet(player.x - 2, player.y - 20));
+			player.rightBullets.push(new Bullet(player.x + 18, player.y - 20));
 		}
 
-		io.emit("displayPlayers", { players });
+		players[socket.id] = player;
+		io.emit("movePlayers", players);
 	});
 
 	socket.on("keyUp", () => {
 		players[socket.id]["z"] = 0;
-		io.emit("displayPlayers", { players });
-	});
-
-	socket.on("disconnect", function () {
-		delete players[socket.id];
-		io.emit("activePlayers", { players });
+		io.emit("movePlayers", players);
 	});
 
 	function moveBullets() {
-		for (let i = 0; i < players[socket.id].bullets.length; i++) {
-			for (let j = 0; j < players[socket.id].bullets[i].length; j++) {
-				// Move bullet
-				players[socket.id].bullets[i][j].y -= 2;
+		const playerLeftBullets = players[socket.id].leftBullets;
+		const playerRightBullets = players[socket.id].rightBullets;
+		const bulletSpeed = 2;
 
-				// Bullet disappear
-				if (players[socket.id].bullets[i][j].y < 1) {
-					players[socket.id].bullets[i].shift();
-				}
+		for (let i = 0; i < playerLeftBullets.length; i++) {
+			playerLeftBullets[i].y -= bulletSpeed;
+
+			const leftBulletGoesAboveTopScreen = playerLeftBullets[i].y < 1;
+			if (leftBulletGoesAboveTopScreen) {
+				playerLeftBullets.shift();
 			}
 		}
 
-		io.emit("displayBullets", { players });
+		for (let i = 0; i < playerRightBullets.length; i++) {
+			playerRightBullets[i].y -= bulletSpeed;
+
+			const rightBulletGoesAboveTopScreen = playerRightBullets[i].y < 1;
+			if (rightBulletGoesAboveTopScreen) {
+				playerRightBullets.shift();
+			}
+		}
+
+		players[socket.id].leftBullets = playerLeftBullets;
+		players[socket.id].rightBullets = playerRightBullets;
+		io.emit("displayBullets", { playerLeftBullets, playerRightBullets });
 	}
 
 	function moveEnemies() {
-		io.emit("moveEnemies", { enemies });
+		const player = players[socket.id];
 
 		for (let i = 0; i < enemies.length; i++) {
-			// Move Enemies
-			if (enemies[i].type == "heavy") {
-				enemies[i].y += 1;
-			} else if (enemies[i].type == "light") {
-				enemies[i].y += 3;
-			} else if (enemies[i].type == "drone") {
-				enemies[i].y += 4;
-				if (enemies[i].x < players[socket.id]["x"]) {
-					enemies[i].x += 2;
-				} else {
-					enemies[i].x -= 2;
+			const enemyShip = enemies[i];
+
+			enemyShip.y += enemyShip.speed;
+
+			if (enemyShip.type == "drone") {
+				if (enemyShip.x < player.x) {
+					enemyShip.x += 2;
+				}
+
+				if (enemyShip.x > player.x) {
+					enemyShip.x -= 2;
 				}
 			}
 
-			if (enemies[i].life <= 0) {
-				// Refill life of enemies' lives depending on enemy type
+			const enemyShipHasDied = enemyShip.health <= 0;
+			const enemyGoesBelowBottomScreen =
+				enemyShip.y > screenBottomBorderline + 30;
+			const enemyShipWillResetLocation =
+				enemyShipHasDied || enemyGoesBelowBottomScreen;
 
-				let explosionSound;
-				if (enemies[i].type == "heavy") {
-					explosions.push({
-						x: enemies[i].x,
-						y: enemies[i].y,
-						type: "heavy_explode",
-					});
-					explosionSound = "/sounds/Explode1.mp3";
-					players[socket.id].score += 25;
-					enemies[i].life = heavyLife;
-				} else if (enemies[i].type == "light") {
-					explosions.push({
-						x: enemies[i].x,
-						y: enemies[i].y,
-						type: "light_explode",
-					});
-					explosionSound = "/sounds/Explode2.mp3";
-					players[socket.id].score += 10;
-					enemies[i].life = lightLife;
-				} else if (enemies[i].type == "drone") {
-					explosions.push({
-						x: enemies[i].x,
-						y: enemies[i].y,
-						type: "drone_explode",
-					});
-					explosionSound = "/sounds/Explode3.mp3";
-					players[socket.id].score += 5;
-					enemies[i].life = droneLife;
-				}
+			if (enemyShipHasDied) {
+				explosions.push(
+					new Explosion(
+						enemyShip.x,
+						enemyShip.y,
+						`${enemyShip.type}_explode`
+					)
+				);
+				player.score += enemyShip.score;
+				enemyShip.heal();
 
-				io.emit("explosionSound", { explosionSound, players });
+				io.emit("explosionSound", {
+					explosionSoundType: enemyShip.type,
+					players,
+				});
 
-				//Move exploded enemy to the top
-				enemies[i].y = -300;
-				enemies[i].x = Math.floor(Math.random() * 930) + 25;
+				setTimeout(() => explosions.shift(), 1000);
 			}
 
-			// MOVE ENEMIES BACK TO THE TOP WHEN REACHED THE BOTTOM
-			if (enemies[i].y > 530) {
-				enemies[i].y = 0;
-				enemies[i].x = Math.floor(Math.random() * 930) + 25;
+			if (enemyShipWillResetLocation) {
+				const insideHorizontalScreenPosition =
+					Math.floor(Math.random() * (screenRightBorderline - 40)) +
+					(screenLeftBorderline + 5);
+
+				enemyShip.y = screenTopBorderline - 200;
+				enemyShip.x = insideHorizontalScreenPosition;
 			}
+
+			const playerAndEnemyCollided =
+				Math.abs(enemyShip.x - player.x) < 40 &&
+				Math.abs(enemyShip.y - player.y) < 15;
+
+			if (playerAndEnemyCollided) {
+				enemyShip.health = 0;
+				io.emit("blinkPlayerWhenHit", player.name);
+
+				player.life--;
+			}
+
+			players[socket.id] = player;
+			enemies[i] = enemyShip;
 		}
+		io.emit("moveEnemies", enemies);
 	}
 
 	function detectCollision() {
-		//BOSS-BULLET COLLISION
+		const player = players[socket.id];
+		// BULLET-TO-BOSS COLLISION
 		// for(let i = 0; i < players[socket.id].bullets.length; i++) {
 		//     for(let j = 0; j < players[socket.id].bullets[i].length; j++) {
 		//         // if(Math.abs(boss.x - players[socket.id].bullets[i][j].x) < 80 && Math.abs(boss.y - players[socket.id].bullets[i][j].y) <= 35) {
@@ -232,52 +226,60 @@ io.on("connection", function (socket) {
 		//     }
 		// }
 
-		for (let k = 0; k < enemies.length; k++) {
-			// ENEMY-BULLET COLLISION
-			for (let i = 0; i < players[socket.id].bullets.length; i++) {
-				for (let j = 0; j < players[socket.id].bullets[i].length; j++) {
-					if (
-						Math.abs(
-							enemies[k].x - players[socket.id].bullets[i][j].x
-						) < 30 &&
-						Math.abs(
-							enemies[k].y - players[socket.id].bullets[i][j].y
-						) < 20
-					) {
-						players[socket.id].bullets[i].shift();
-						enemies[k].life -= players[socket.id].damage;
-					}
+		// BULLET-TO-ENEMY COLLISION
+		for (let idx = 0; idx < enemies.length; idx++) {
+			const enemy = enemies[idx];
+
+			const { leftBullets, rightBullets, damage } = player;
+			const distanceToCollidehorizontally = 30;
+			const distanceToCollideVertically = 20;
+
+			for (let i = 0; i < leftBullets.length; i++) {
+				const collidedHorizontally =
+					Math.abs(enemy.x - leftBullets[i].x) <
+					distanceToCollidehorizontally;
+				const collidedVertically =
+					Math.abs(enemy.y - leftBullets[i].y) <
+					distanceToCollideVertically;
+
+				const enemyAndLeftBulletCollided =
+					collidedHorizontally && collidedVertically;
+
+				if (enemyAndLeftBulletCollided) {
+					player.leftBullets.splice(i, 1);
+					enemy.health -= damage;
 				}
 			}
 
-			if (
-				Math.abs(enemies[k].x - players[socket.id].x) < 40 &&
-				Math.abs(enemies[k].y - players[socket.id].y) < 15
-			) {
-				//Add item to explosions array then play sound
-				enemies[k].life -= 30000;
-				io.emit("explosionSound", {
-					explosionSound: "/sounds/Explode3.mp3",
-				});
-				io.emit("playerHit", { name: players[socket.id].name });
-				//Subtract 50 scores
-				players[socket.id]["score"] =
-					players[socket.id]["score"] >= 50
-						? players[socket.id]["score"] - 50
-						: 0;
+			for (let i = 0; i < rightBullets.length; i++) {
+				const collidedHorizontally =
+					Math.abs(enemy.x - rightBullets[i].x) <
+					distanceToCollidehorizontally;
+				const collidedVertically =
+					Math.abs(enemy.y - rightBullets[i].y) <
+					distanceToCollideVertically;
+
+				const enemyAndRightBulletCollided =
+					collidedHorizontally && collidedVertically;
+
+				if (enemyAndRightBulletCollided) {
+					player.rightBullets.splice(i, 1);
+					enemy.health -= damage;
+				}
 			}
 		}
 	}
 
-	function explosionActivity() {
-		io.emit("explosions", { explosions });
+	function explosionsMovement() {
 		for (let i = 0; i < explosions.length; i++) {
 			explosions[i].y += 3;
 
-			//Remove if enemy explosion reaches the bottom
-			if (explosions[i].y > 530) {
+			const explosionGoesBelowBottomScreen =
+				explosions[i].y > screenBottomBorderline + 30;
+			if (explosionGoesBelowBottomScreen) {
 				explosions.shift();
 			}
 		}
+		io.emit("createExplosions", explosions);
 	}
 }); // IO CONNECTION

@@ -1,218 +1,236 @@
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
 }
 
 body {
-    /* background: linear-gradient(#000, #222, #333,#444, darkslateblue); */
-    background: url('/images/beanstalk.png');
-    display: flex;
-    align-items: center;
-    height: 100vh;
+	/* background: linear-gradient(#000, #222, #333,#444, darkslateblue); */
+	background: url("/images/beanstalk.png");
+	display: flex;
+	align-items: center;
+	height: 100vh;
 }
 
 #frame {
-    background: url('/images/space.gif');
-    background-repeat: no-repeat;
-    background-size: cover;
-    width:1000px;
-    height:550px;
-    margin: auto;
-    position: relative;
-    border: 10px solid;
-    border-color: whitesmoke transparent whitesmoke transparent;
-    /* border-radius: 4px; */
-    transform: scale(1.2);
-    overflow: hidden;
-    cursor: crosshair;
-    box-sizing: content-box;
+	background: url("/images/space.gif");
+	background-repeat: no-repeat;
+	background-size: cover;
+	width: 1000px;
+	height: 550px;
+	margin: auto;
+	position: relative;
+	border: 10px solid;
+	border-color: whitesmoke transparent whitesmoke transparent;
+	/* border-radius: 4px; */
+	transform: scale(1.2);
+	overflow: hidden;
+	cursor: crosshair;
+	box-sizing: content-box;
 }
 
-.hero{
-    background: url('/images/1942.gif');
-    background-position: -84px -180px;
-    transform: scale(1.6);
-    width: 26px;
-    height: 28px;
-    position: absolute;
-    transition: all 150ms ease;
+.hero {
+	background: url("/images/1942.gif");
+	background-position: -84px -180px;
+	transform: scale(1.6);
+	width: 26px;
+	height: 28px;
+	position: absolute;
+	transition: all 150ms ease;
 }
 .hero > p {
-    position: absolute;
-    left: 50%;
-    bottom: -4px;
-    color: whitesmoke;
-    font-size: 4px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    transform: translateX(-50%);
+	position: absolute;
+	left: 50%;
+	bottom: -4px;
+	color: whitesmoke;
+	font-size: 4px;
+	letter-spacing: 1px;
+	text-transform: uppercase;
+	transform: translateX(-50%);
 }
 
-#boss{
-    background: url('/images/1942.gif'), rgba(255, 0, 0, 0.3);
-    background-position: -31px -5px;
-    transform: scale(2.5) rotateZ(180deg);
-    box-shadow: 0px 0px 25px orangered;
-    border-bottom: 1px solid orange;
-    border-top: 1px solid gold;
-    border-radius: 50%;
-    width: 30px;
-    height: 25px;
-    position: absolute;
+#boss {
+	background: url("/images/1942.gif"), rgba(255, 0, 0, 0.3);
+	background-position: -31px -5px;
+	transform: scale(2.5) rotateZ(180deg);
+	box-shadow: 0px 0px 25px orangered;
+	border-bottom: 1px solid orange;
+	border-top: 1px solid gold;
+	border-radius: 50%;
+	width: 30px;
+	height: 25px;
+	position: absolute;
 }
 
-#boss::before, #boss::after {
-    content: '';
-    background: url('/images/1942.gif');
-    background-position: -152.5px -11px;
-    width: 30px;
-    height: 20px;
-    position: absolute;
-    transform: rotateZ(180deg);
-    top: -3px;
+#boss::before,
+#boss::after {
+	content: "";
+	background: url("/images/1942.gif");
+	background-position: -152.5px -11px;
+	width: 30px;
+	height: 20px;
+	position: absolute;
+	transform: rotateZ(180deg);
+	top: -3px;
 }
-    #boss::before {
-        left: -15px;
-    }
-    #boss::after {
-        left: 13px;
-    }
-
-.booster::before, .booster::after, .light_enemy::before {
-    content: "";
-    width: 3px;
-    height: 5px;
-    background-color: green;
-    border-radius: 0 0 3px 3px;
-    position: absolute;
-    top: 9px;
-    animation: flame 100ms infinite ease;
+#boss::before {
+	left: -15px;
 }
-    .booster::before {
-        left: 3px;
-    }
-    .booster::after {
-        right: 2px;
-    }
-
-.heavy_enemy, .light_enemy, .drone_enemy {
-    transition: all 1ms ease;
+#boss::after {
+	left: 13px;
 }
 
-.heavy_enemy{
-    background: url('/images/1942.gif');
-    background-position: -32px -3px;
-    transform: scale(2) rotateZ(180deg);
-    border-radius: 50%;
-    box-shadow: 0 0 10px orangered;
-    width: 26px;
-    height: 28px;
-    position: absolute;
+.booster::before,
+.booster::after,
+.light_enemy::before {
+	content: "";
+	width: 3px;
+	height: 5px;
+	background-color: green;
+	border-radius: 0 0 3px 3px;
+	position: absolute;
+	top: 9px;
+	animation: flame 100ms infinite ease;
+}
+.booster::before {
+	left: 3px;
+}
+.booster::after {
+	right: 2px;
 }
 
-.light_enemy{
-    background: url('/images/1942.gif');
-    background-position: -122px -10px;
-    transform: scale(1.7);
-    width :26px;
-    height: 20px;
-    position: absolute;
-    top: 300;
-    left: 50;
+.heavy_enemy,
+.light_enemy,
+.drone_enemy {
+	transition: all 1ms ease;
+}
+
+.heavy_enemy {
+	background: url("/images/1942.gif");
+	background-position: -32px -3px;
+	transform: scale(2) rotateZ(180deg);
+	border-radius: 50%;
+	box-shadow: 0 0 10px orangered;
+	width: 26px;
+	height: 28px;
+	position: absolute;
+}
+
+.light_enemy {
+	background: url("/images/1942.gif");
+	background-position: -122px -10px;
+	transform: scale(1.7);
+	width: 26px;
+	height: 20px;
+	position: absolute;
+	top: 300;
+	left: 50;
 }
 
 .light_enemy::before {
-    background-color: whitesmoke;
-    top: 2px;
-    left: 12px;
-    transform: rotateZ(180deg);
+	background-color: whitesmoke;
+	top: 2px;
+	left: 12px;
+	transform: rotateZ(180deg);
 }
 
-.drone_enemy{
-    background: url('/images/1942.gif');
-    /* background-position: -89px -1260px; */
-    background-position: -74px -1257px;
-    transform: scale(1.5) rotateZ(-46deg);
-    width: 17px;
-    height: 20px;
-    position: absolute;
+.drone_enemy {
+	background: url("/images/1942.gif");
+	/* background-position: -89px -1260px; */
+	background-position: -74px -1257px;
+	transform: scale(1.5) rotateZ(-46deg);
+	width: 17px;
+	height: 20px;
+	position: absolute;
 }
 
-.bullet{
-    background: url('/images/1942.gif');
-    background-position: -186px -404px;
-    border-radius: 50%;
-    box-shadow: 0 0 5px greenyellow;
-    width:12px;
-    height:12px;
-    position:absolute;
-    transform: scale(1.1);
+.bullet {
+	background: url("/images/1942.gif");
+	background-position: -186px -404px;
+	border-radius: 50%;
+	box-shadow: 0 0 5px greenyellow;
+	width: 12px;
+	height: 12px;
+	position: absolute;
+	transform: scale(1.1);
 }
 
-.heavy_explode, .light_explode, .drone_explode {
-    background: url('/images/1942.gif');
-    transform: scale(2);
-    width: 30px;
-    height: 30px;
-    position: absolute;
+.heavy_explode,
+.light_explode,
+.drone_explode {
+	background: url("/images/1942.gif");
+	transform: scale(2);
+	width: 30px;
+	height: 30px;
+	position: absolute;
 }
 
 .heavy_explode {
-    background-position: -111px -31px;
+	background-position: -111px -31px;
 }
 
 .light_explode {
-    background-position: -144px -31px;
+	background-position: -144px -31px;
 }
 
 .drone_explode {
-    background-position: -82px -35px;
+	background-position: -82px -35px;
 }
 
 div#scores {
-    display: block;
-    margin: 1rem 0.6rem  0 auto;
-    width: 70px;
-    min-height: 70px;
+	display: block;
+	margin: 1rem 0.6rem 0 auto;
+	width: 70px;
+	min-height: 70px;
+	pointer-events: none;
 }
 
 .score {
-    margin: 0 0 10px; 
-    border: 3px solid red;
-    border-radius: 30%;
-    background-color:#222;
-    color: white;
-    padding: 2px 5px;
-    font-size: 24px;
-    font-family: Arial;
-    text-align: center;
-    position: relative;
+	margin: 0 0 10px;
+	border: 3px solid red;
+	border-radius: 30%;
+	background-color: #222;
+	color: white;
+	padding: 2px 5px;
+	font-size: 24px;
+	font-family: Arial;
+	text-align: center;
+	position: relative;
+	pointer-events: none;
 }
 
 .score p {
-    position: absolute;
-    font-size: 7px;
-    top: -10px;
-    left: 50%;
-    padding: 2px 5px;
-    letter-spacing: 1px;
-    background-color: #222;
-    transform: translateX(-50%);
-    border: 1px solid red;
-    border-radius: 5px;
+	position: absolute;
+	font-size: 7px;
+	top: -10px;
+	left: 50%;
+	padding: 2px 5px;
+	letter-spacing: 1px;
+	background-color: #222;
+	transform: translateX(-50%);
+	border: 1px solid red;
+	border-radius: 5px;
+	pointer-events: none;
 }
 
 .blink {
-    animation: blink 300ms ease infinite;
+	animation: blink 300ms ease infinite;
 }
 
 @keyframes blink {
-    from { opacity: 1; }
-    to { opacity: 0; }
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+	}
 }
 
 @keyframes flame {
-    from { box-shadow: 0px 1px 2px red, 0 3px 2px orange; }
-    to { box-shadow: 0px 3px 2px red, 0 5px 2px orange; }
+	from {
+		box-shadow: 0px 1px 2px red, 0 3px 2px orange;
+	}
+	to {
+		box-shadow: 0px 3px 2px red, 0 5px 2px orange;
+	}
 }
