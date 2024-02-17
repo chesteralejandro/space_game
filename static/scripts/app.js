@@ -10,9 +10,10 @@ window.addEventListener("load", function (e) {
 	const playersContainer = document.querySelector("#players");
 	const scoresContainer = document.querySelector("#scores");
 	const enemiesContainer = document.querySelector("#enemies");
-	const bossFigure = document.getElementById("boss");
+	const explosionsContainer = document.querySelector("#explosions");
+	const bossFigure = document.querySelector("#boss");
 
-	const socket = io();
+	const socket = io(); // Connect to server socket.
 
 	socket.emit("joinGame", { name });
 
@@ -25,20 +26,23 @@ window.addEventListener("load", function (e) {
 
 			playerFigures += `<div id="${name}" class="hero booster" style="top: ${y}px; left: ${x}px; transform: scale(1.6) rotateZ(${z}deg)">
                                     <p>${name}</p>
-                              </div>`;
+                            </div>`;
 
 			playerScores += `<div id="${name}" class="score"><p>${name}</p>${score}</div>`;
 		}
 
 		playersContainer.innerHTML = playerFigures;
 		scoresContainer.innerHTML = playerScores;
+
+		const music = new Audio("/sounds/Gradius.mp3");
+		music.play();
 	});
 
 	socket.on("movePlayers", (players) => {
 		for (let playerID in players) {
 			const { x, y, z, name } = players[playerID];
 
-			const player = document.querySelector(`div#${name}.hero`);
+			const player = document.querySelector(`#${name}.hero`);
 
 			player.setAttribute(
 				"style",
@@ -48,14 +52,13 @@ window.addEventListener("load", function (e) {
 	});
 
 	socket.on("createEnemies", (enemies) => {
-		const music = new Audio("/sounds/Gradius.mp3");
-		music.play();
-
 		let enemyFigures = "";
+
 		for (let i = 0; i < enemies.length; i++) {
 			const { x, y, type } = enemies[i];
 			enemyFigures += `<div id="enemy_${i}" class='${type}_enemy' style='top: ${y}px; left: ${x}px;'></div>`;
 		}
+
 		enemiesContainer.innerHTML = enemyFigures;
 	});
 
@@ -111,12 +114,13 @@ window.addEventListener("load", function (e) {
 	});
 
 	socket.on("createExplosions", (explosions) => {
-		let output = "";
+		let explosionFigures = "";
 		for (let i = 0; i < explosions.length; i++) {
 			const { x, y, type } = explosions[i];
-			output += `<div class='${type}' style='left: ${x}px; top: ${y}px'></div>`;
+			explosionFigures += `<div class='${type}' style='left: ${x}px; top: ${y}px'></div>`;
 		}
-		document.getElementById("explode").innerHTML = output;
+
+		explosionsContainer.innerHTML = explosionFigures;
 	});
 
 	// function gameloop() {

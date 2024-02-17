@@ -6,19 +6,19 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<link rel="stylesheet" href="/stylesheets/style.css" />
 		<script src="/socket.io/socket.io.js"></script>
-		<script src="/scripts/app.js"></script>
+		<script src="/scripts/app.js" defer></script>
 		<title>1942 | Space</title>
 	</head>
 	<body>
-		<div id="frame">
+		<section id="frame">
 			<div id="scores"></div>
 			<div id="players"></div>
 			<div id="bullets"></div>
 			<div id="enemies"></div>
-			<div id="explode"></div>
-			<!-- <div id="boss"></div> -->
+			<div id="explosions"></div>
+			<div id="boss"></div>
 			<div id="boss_explode"></div>
-		</div>
+		</section>
 		<!-- <iframe
 			width="420"
 			height="315"

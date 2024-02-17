@@ -38,6 +38,7 @@ body {
 	position: absolute;
 	transition: all 150ms ease;
 }
+
 .hero > p {
 	position: absolute;
 	left: 50%;
@@ -73,9 +74,11 @@ body {
 	transform: rotateZ(180deg);
 	top: -3px;
 }
+
 #boss::before {
 	left: -15px;
 }
+
 #boss::after {
 	left: 13px;
 }
@@ -92,11 +95,22 @@ body {
 	top: 9px;
 	animation: flame 100ms infinite ease;
 }
+
 .booster::before {
 	left: 3px;
 }
+
 .booster::after {
 	right: 2px;
+}
+
+@keyframes flame {
+	from {
+		box-shadow: 0px 1px 2px red, 0 3px 2px orange;
+	}
+	to {
+		box-shadow: 0px 3px 2px red, 0 5px 2px orange;
+	}
 }
 
 .heavy_enemy,
@@ -177,7 +191,7 @@ body {
 	background-position: -82px -35px;
 }
 
-div#scores {
+#scores {
 	display: block;
 	margin: 1rem 0.6rem 0 auto;
 	width: 70px;
@@ -223,14 +237,5 @@ div#scores {
 	}
 	to {
 		opacity: 0;
-	}
-}
-
-@keyframes flame {
-	from {
-		box-shadow: 0px 1px 2px red, 0 3px 2px orange;
-	}
-	to {
-		box-shadow: 0px 3px 2px red, 0 5px 2px orange;
 	}
 }

@@ -4,7 +4,6 @@ const app = express();
 const port = 8000;
 
 const Boss = require("./classes/boss");
-const Bullet = require("./classes/bullet");
 const Enemy = require("./classes/enemy");
 const Explosion = require("./classes/explosion");
 const Player = require("./classes/player");
@@ -22,9 +21,10 @@ const server = app.listen(port, () =>
 
 const io = require("socket.io")(server);
 
+let gameloop;
+const players = {};
 const boss = new Boss();
 const bossExplosions = [];
-
 const enemies = [
 	new Enemy(550, -1000, "drone"),
 	new Enemy(66, -1000, "drone"),
@@ -39,17 +39,18 @@ const enemies = [
 	new Enemy(850, -1000, "heavy"),
 	new Enemy(50, -1000, "heavy"),
 ];
-
 const explosions = [];
-const players = {};
-let gameloop;
 
 const screenTopBorderline = 20;
 const screenBottomBorderline = 500;
 const screenLeftBorderline = 20;
 const screenRightBorderline = 970;
+const distanceToCollidehorizontally = 30;
+const distanceToCollideVertically = 20;
 
 io.on("connection", function (socket) {
+	console.log("CONNECTED TO SOCKET...");
+
 	socket.on("disconnect", () => {
 		delete players[socket.id];
 		io.emit("createPlayers", players);
@@ -60,7 +61,8 @@ io.on("connection", function (socket) {
 		players[socket.id] = new Player(name);
 
 		io.emit("createPlayers", players);
-		// socket.emit responds only to the user that triggered the listener
+		/* socket.emit responds only to
+		the user that triggered the listener */
 		socket.emit("createEnemies", enemies);
 
 		setInterval(() => {
@@ -70,7 +72,7 @@ io.on("connection", function (socket) {
 
 		gameloop = setInterval(() => {
 			moveEnemies();
-			explosionsMovement();
+			simulateExplosions();
 		}, 40);
 	});
 
@@ -88,40 +90,33 @@ io.on("connection", function (socket) {
 		const playerCanMoveLeft = player.x > screenLeftBorderline;
 		const playerCanMoveRight = player.x < screenRightBorderline;
 
-		const tiltLeftAngle = -8;
-		const tiltRightAngle = 8;
-
 		if (playerIsMovingUp && playerCanMoveUp) {
-			player.y -= player.speed;
+			player.moveUp();
 		} else if (playerIsMovingDown && playerCanMoveDown) {
-			player.y += player.speed;
+			player.moveDown();
 		} else if (playerIsMovingLeft && playerCanMoveLeft) {
-			player.x -= player.speed;
-			player.z = tiltLeftAngle;
+			player.moveLeft();
 		} else if (playerIsMovingRight && playerCanMoveRight) {
-			player.x += player.speed;
-			player.z = tiltRightAngle;
+			player.moveRight();
 		} else if (playerIsFiring) {
-			player.leftBullets.push(new Bullet(player.x - 2, player.y - 20));
-			player.rightBullets.push(new Bullet(player.x + 18, player.y - 20));
+			player.fire();
 		}
 
-		players[socket.id] = player;
 		io.emit("movePlayers", players);
 	});
 
 	socket.on("keyUp", () => {
-		players[socket.id]["z"] = 0;
+		players[socket.id].tiltForward();
 		io.emit("movePlayers", players);
 	});
 
 	function moveBullets() {
-		const playerLeftBullets = players[socket.id].leftBullets;
-		const playerRightBullets = players[socket.id].rightBullets;
-		const bulletSpeed = 2;
+		const player = players[socket.id];
+		const playerLeftBullets = player.leftBullets;
+		const playerRightBullets = player.rightBullets;
 
 		for (let i = 0; i < playerLeftBullets.length; i++) {
-			playerLeftBullets[i].y -= bulletSpeed;
+			playerLeftBullets[i].y -= player.bulletSpeed;
 
 			const leftBulletGoesAboveTopScreen = playerLeftBullets[i].y < 1;
 			if (leftBulletGoesAboveTopScreen) {
@@ -130,7 +125,7 @@ io.on("connection", function (socket) {
 		}
 
 		for (let i = 0; i < playerRightBullets.length; i++) {
-			playerRightBullets[i].y -= bulletSpeed;
+			playerRightBullets[i].y -= player.bulletSpeed;
 
 			const rightBulletGoesAboveTopScreen = playerRightBullets[i].y < 1;
 			if (rightBulletGoesAboveTopScreen) {
@@ -149,23 +144,19 @@ io.on("connection", function (socket) {
 		for (let i = 0; i < enemies.length; i++) {
 			const enemyShip = enemies[i];
 
-			enemyShip.y += enemyShip.speed;
+			enemyShip.moveDown();
 
 			if (enemyShip.type == "drone") {
-				if (enemyShip.x < player.x) {
-					enemyShip.x += 2;
-				}
+				const playerIsOnRight = enemyShip.x < player.x;
+				const playerIsOnLeft = enemyShip.x > player.x;
 
-				if (enemyShip.x > player.x) {
-					enemyShip.x -= 2;
-				}
+				if (playerIsOnRight) enemyShip.moveRight();
+				if (playerIsOnLeft) enemyShip.moveLeft();
 			}
 
 			const enemyShipHasDied = enemyShip.health <= 0;
 			const enemyGoesBelowBottomScreen =
 				enemyShip.y > screenBottomBorderline + 30;
-			const enemyShipWillResetLocation =
-				enemyShipHasDied || enemyGoesBelowBottomScreen;
 
 			if (enemyShipHasDied) {
 				explosions.push(
@@ -175,39 +166,31 @@ io.on("connection", function (socket) {
 						`${enemyShip.type}_explode`
 					)
 				);
-				player.score += enemyShip.score;
-				enemyShip.heal();
+
+				setTimeout(() => explosions.shift(), 1000);
 
 				io.emit("explosionSound", {
 					explosionSoundType: enemyShip.type,
 					players,
 				});
 
-				setTimeout(() => explosions.shift(), 1000);
+				enemyShip.heal();
 			}
+
+			const enemyShipWillResetLocation =
+				enemyShipHasDied || enemyGoesBelowBottomScreen;
 
 			if (enemyShipWillResetLocation) {
-				const insideHorizontalScreenPosition =
+				const allowedHorizontalScreenPosition =
 					Math.floor(Math.random() * (screenRightBorderline - 40)) +
 					(screenLeftBorderline + 5);
+				const verticalPosition = screenTopBorderline - 200;
 
-				enemyShip.y = screenTopBorderline - 200;
-				enemyShip.x = insideHorizontalScreenPosition;
+				enemyShip.backToBase(
+					allowedHorizontalScreenPosition,
+					verticalPosition
+				);
 			}
-
-			const playerAndEnemyCollided =
-				Math.abs(enemyShip.x - player.x) < 40 &&
-				Math.abs(enemyShip.y - player.y) < 15;
-
-			if (playerAndEnemyCollided) {
-				enemyShip.health = 0;
-				io.emit("blinkPlayerWhenHit", player.name);
-
-				player.life--;
-			}
-
-			players[socket.id] = player;
-			enemies[i] = enemyShip;
 		}
 		io.emit("moveEnemies", enemies);
 	}
@@ -226,53 +209,65 @@ io.on("connection", function (socket) {
 		//     }
 		// }
 
-		// BULLET-TO-ENEMY COLLISION
 		for (let idx = 0; idx < enemies.length; idx++) {
-			const enemy = enemies[idx];
-
+			const enemyShip = enemies[idx];
 			const { leftBullets, rightBullets, damage } = player;
-			const distanceToCollidehorizontally = 30;
-			const distanceToCollideVertically = 20;
 
+			// LEFT-BULLET-TO-ENEMY-COLLISION
 			for (let i = 0; i < leftBullets.length; i++) {
 				const collidedHorizontally =
-					Math.abs(enemy.x - leftBullets[i].x) <
+					Math.abs(enemyShip.x - leftBullets[i].x) <
 					distanceToCollidehorizontally;
 				const collidedVertically =
-					Math.abs(enemy.y - leftBullets[i].y) <
+					Math.abs(enemyShip.y - leftBullets[i].y) <
 					distanceToCollideVertically;
 
-				const enemyAndLeftBulletCollided =
+				const enemyShipAndLeftBulletCollided =
 					collidedHorizontally && collidedVertically;
 
-				if (enemyAndLeftBulletCollided) {
+				if (enemyShipAndLeftBulletCollided) {
 					player.leftBullets.splice(i, 1);
-					enemy.health -= damage;
+					const reward = enemyShip.takeHit(damage);
+					player.addScore(reward);
 				}
 			}
 
+			// RIGHT-BULLET-TO-ENEMY-COLLISION
 			for (let i = 0; i < rightBullets.length; i++) {
 				const collidedHorizontally =
-					Math.abs(enemy.x - rightBullets[i].x) <
+					Math.abs(enemyShip.x - rightBullets[i].x) <
 					distanceToCollidehorizontally;
 				const collidedVertically =
-					Math.abs(enemy.y - rightBullets[i].y) <
+					Math.abs(enemyShip.y - rightBullets[i].y) <
 					distanceToCollideVertically;
 
-				const enemyAndRightBulletCollided =
+				const enemyShipAndRightBulletCollided =
 					collidedHorizontally && collidedVertically;
 
-				if (enemyAndRightBulletCollided) {
+				if (enemyShipAndRightBulletCollided) {
 					player.rightBullets.splice(i, 1);
-					enemy.health -= damage;
+					const reward = enemyShip.takeHit(damage);
+					player.addScore(reward);
 				}
+			}
+
+			// PLAYER-TO-ENEMY-COLLISION
+			const playerAndEnemyCollided =
+				Math.abs(enemyShip.x - player.x) < 40 &&
+				Math.abs(enemyShip.y - player.y) < 15;
+
+			if (playerAndEnemyCollided) {
+				io.emit("blinkPlayerWhenHit", player.name);
+				enemyShip.destroy();
+				player.minusLife();
 			}
 		}
 	}
 
-	function explosionsMovement() {
+	function simulateExplosions() {
+		const explosionSpeed = 3;
 		for (let i = 0; i < explosions.length; i++) {
-			explosions[i].y += 3;
+			explosions[i].y += explosionSpeed;
 
 			const explosionGoesBelowBottomScreen =
 				explosions[i].y > screenBottomBorderline + 30;
@@ -280,6 +275,7 @@ io.on("connection", function (socket) {
 				explosions.shift();
 			}
 		}
+
 		io.emit("createExplosions", explosions);
 	}
 }); // IO CONNECTION
